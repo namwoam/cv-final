@@ -1,0 +1,35 @@
+<launch>
+    <arg name="main_camera_frame_id" value="/lucid_cameras_x00/gige_100_f_hdr"/>
+
+    <rosparam param="/perception/main_camera_frame_id">
+        /lucid_cameras_x00/gige_100_f_hdr
+    </rosparam>
+
+    <!-- All LiDAR to camera extrinsic parameters -->
+    <node pkg="tf2_ros" type="static_transform_publisher"
+      name="tf_main_camera__gige_100_fr_hdr"
+      args="0.559084 0.0287952 -0.0950537 -0.0806252 0.607127 0.0356452 0.789699
+      $(arg main_camera_frame_id) /lucid_cameras_x00/gige_100_fr_hdr" />
+
+    <node pkg="tf2_ros" type="static_transform_publisher"
+      name="tf_main_camera__gige_100_fl_hdr"
+      args="-0.564697 0.0402756 -0.028059 -0.117199 -0.575476 -0.0686302 0.806462
+      $(arg main_camera_frame_id) /lucid_cameras_x00/gige_100_fl_hdr" />
+
+    <node pkg="tf2_ros" type="static_transform_publisher"
+      name="velo2cam_tf__gige_100_fl_hdr_gige_100_fr_hdr_mix"
+      args="-1.2446 0.21365 -0.91917 0.074732 -0.794 -0.10595 0.59393
+      /lucid_cameras_x00/gige_100_fl_hdr /lucid_cameras_x00/gige_100_b_hdr" />
+
+    <!-- tf about vehicle -->
+    <node pkg="tf2_ros" type="static_transform_publisher"
+      name="tf_main_camera__front_bump"
+      args="0.06742502153707941 1.723731468585929 1.886103532139902 0.5070558775462676 -0.47615311808704197 0.4812773544166568 0.5334272708696808
+      $(arg main_camera_frame_id) /front_bump"/>
+
+    <node pkg="tf2_ros" type="static_transform_publisher"
+      name="tf_main_camera__base_link_tmp"
+      args="0.0 0.0 0.0 -0.5070558775462676 0.47615311808704197 -0.4812773544166568 0.5334272708696808
+      /base_link $(arg main_camera_frame_id)"/>
+
+</launch>
