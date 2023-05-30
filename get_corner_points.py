@@ -33,7 +33,7 @@ def get_corner_points(data_path, timestamp, confidence=0.2):
 
     for id, box in enumerate(boxes):
         crop_img = img[box[1]:box[3], box[0]:box[2]]
-        crop_gray = gray[box[1]:box[3], box[0]:box[2]]
+        crop_gray = gray[box[1]:box[3], box[0]:box[2]].copy() # There could be overlapping, so copy is needed in order not to change the original gray image
 
         mean = np.mean(crop_gray)
         std = np.std(crop_gray)
