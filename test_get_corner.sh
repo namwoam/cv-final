@@ -1,0 +1,1 @@
+python ./get_corner_points.py --data_path ./public/seq1
