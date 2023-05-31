@@ -56,7 +56,7 @@ def get_corner_points(data_path, timestamp, confidence=0.2):
         for contour in contours:
             approx = cv2.approxPolyDP(contour, 5, True)
             for corner in approx:
-                cv2.circle(crop_img, tuple(corner[0]), 3, (0, 0, 255), -1)
+                cv2.circle(img, (corner[0][0] + box[0], corner[0][1] + box[1]), 3, (0, 255, 0), -1)
                 corner_points.append(corner[0] + box[:2])
 
     cv2.imwrite(os.path.join(data_path, 'output',
