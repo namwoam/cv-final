@@ -33,7 +33,8 @@ def get_corner_points(data_path, timestamp, confidence=0.2):
 
     for id, box in enumerate(boxes):
         crop_img = img[box[1]:box[3], box[0]:box[2]]
-        crop_gray = gray[box[1]:box[3], box[0]:box[2]].copy() # There could be overlapping, so copy is needed in order not to change the original gray image
+        # There could be overlapping, so copy is needed in order not to change the original gray image
+        crop_gray = gray[box[1]:box[3], box[0]:box[2]].copy()
 
         mean = np.mean(crop_gray)
         std = np.std(crop_gray)
@@ -56,7 +57,8 @@ def get_corner_points(data_path, timestamp, confidence=0.2):
         for contour in contours:
             approx = cv2.approxPolyDP(contour, 5, True)
             for corner in approx:
-                cv2.circle(img, (corner[0][0] + box[0], corner[0][1] + box[1]), 3, (0, 255, 0), -1)
+                cv2.circle(
+                    img, (corner[0][0] + box[0], corner[0][1] + box[1]), 3, (0, 255, 0), -1)
                 corner_points.append(corner[0] + box[:2])
 
     cv2.imwrite(os.path.join(data_path, 'output',
