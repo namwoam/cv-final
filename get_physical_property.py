@@ -49,11 +49,15 @@ def construct_physical_property(data_path, imu_timestamps, speed_timestamps, loc
                 data_path, f"physics-analysis-{section}.png"))
     groundtruth_df = pd.DataFrame(columns=["time", "pos_x", "pos_y"])
     for timestamp in localization_timestamps:
-        df = pd.read_csv(os.path.join(data_path, "dataset",
-                         timestamp, "gound_turth_pose.csv"), header=None)
-        time = datetime.datetime.fromtimestamp(
-            float(timestamp.replace("_", ".")))
-        groundtruth_df.loc[len(groundtruth_df)] = [time, df[0][0], df[1][0]]
+        try:
+            df = pd.read_csv(os.path.join(data_path, "dataset",
+                                          timestamp, "gound_turth_pose.csv"), header=None)
+            time = datetime.datetime.fromtimestamp(
+                float(timestamp.replace("_", ".")))
+            groundtruth_df.loc[len(groundtruth_df)] = [
+                time, df[0][0], df[1][0]]
+        except FileNotFoundError:
+            pass
     groundtruth_df = groundtruth_df.sort_values(by=['time'], ignore_index=True)
     if debug:
         print(groundtruth_df)
@@ -63,7 +67,7 @@ def construct_physical_property(data_path, imu_timestamps, speed_timestamps, loc
         plt.plot(groundtruth_df["pos_y"], label="real_position-y")
         plt.legend()
         plt.savefig(os.path.join(
-            data_path, f"physics-analysis.png"))
+            data_path, f"physics-analysis-ground_truth.png"))
 
 
 if __name__ == '__main__':
