@@ -38,21 +38,20 @@ def construct_physical_property(data_path, imu_timestamps, speed_timestamps, loc
     if debug:
         print(imu_df)
     if debug:
-        for section in range(len(imu_df)//100):
-            f = plt.figure(section)
-            for index,  target_column in enumerate(["x", "y", "z"]):
-                plt.plot(imu_df[f"r_{target_column}"][section*100:(section+1)*100],
-                         label=f"rotation-{target_column}")
-                plt.plot(imu_df[f"w_{target_column}"][section*100:(section+1)*100],
-                         label=f"angular_velocity-{target_column}")
-                if target_column == "z":
-                    continue
-                    # omit gravity
-                plt.plot(imu_df[f"a_{target_column}"][section*100:(section+1)*100],
-                         label=f"linear_acceleration-{target_column}")
-            plt.legend()
-            plt.savefig(os.path.join(
-                data_path, f"physics-analysis-{section}.png"))
+        f = plt.figure()
+        for index,  target_column in enumerate(["x", "y", "z"]):
+            plt.plot(imu_df[f"r_{target_column}"],
+                     label=f"rotation-{target_column}")
+            plt.plot(imu_df[f"w_{target_column}"],
+                     label=f"angular_velocity-{target_column}")
+            if target_column == "z":
+                continue
+                # omit gravity
+            plt.plot(imu_df[f"a_{target_column}"],
+                     label=f"linear_acceleration-{target_column}")
+        plt.legend()
+        plt.savefig(os.path.join(
+            data_path, f"physics-analysis-imu.png"))
     groundtruth_df = pd.DataFrame(columns=["time", "pos_x", "pos_y"])
     for timestamp in localizatoin_timestamps:
         try:
@@ -90,13 +89,17 @@ def construct_physical_property(data_path, imu_timestamps, speed_timestamps, loc
     delta_t = delta_t / np.timedelta64(1, 'ns')
     kalman_filter_step_size = 8000
     t = np.linspace(0, delta_t, kalman_filter_step_size)
-    dt = delta_t / kalman_filter_step_size
+    dt = t[1]-t[0]
     vx = np.zeros(kalman_filter_step_size)
     vy = np.zeros(kalman_filter_step_size)
     x = np.zeros(kalman_filter_step_size)
     y = np.zeros(kalman_filter_step_size)
     ax = np.zeros(kalman_filter_step_size)
     ay = np.zeros(kalman_filter_step_size)
+    speed_ptr = 0
+    imu_ptr = 0
+    for kalman_index in range(kalman_filter_step_size):
+        pass
 
 
 if __name__ == '__main__':
