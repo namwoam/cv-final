@@ -12,8 +12,9 @@ JUNCTIONBOX = 3
 OTHER = 4
 CLASS_ID_TO_TYPE = ['ZEBRACROSS', 'STOPLINE', 'ARROW', 'JUNCTIONBOX', 'OTHER']
 POINT_COLOR = [(0, 0, 255), (0, 255, 0), (255, 0, 0), (255, 255, 0), (0, 255, 255)]
-SHORTEST_DISTANCE_TO_BORDER = 2
-SHORTEST_DISTNACE_TO_POINT = 4
+SHORTEST_DISTANCE_TO_BORDER = 4
+SHORTEST_DISTNACE_TO_POINT = 6
+SHORTEST_DISTNACE_TO_POINT_LARGE_CROP = 15
 MIN_AREA_RATIO = 1/200
 EPSILON = 4
 
@@ -117,18 +118,24 @@ class CornerPointDetector:
             h_bar,w_bar = crop_gray.shape
             white = np.sum(crop_gray) //255
             total = h_bar*w_bar
-            if class_id == 0 and white < total/2.5 and total > 250*130:
-                kernal = np.ones((6,6),np.uint8)
-                crop_gray = cv2.dilate(crop_gray,kernal,iterations=1)
-                crop_gray = cv2.erode(crop_gray,kernal,iterations=1)
+            if class_id == 0 and white < total/2.5 and  w_bar>=250 and h_bar >= 150:
                 kernal2 = np.ones((2,2),np.uint8)
                 crop_gray = cv2.erode(crop_gray,kernal2,iterations=1)
                 crop_gray = cv2.dilate(crop_gray,kernal2,iterations=1)
+                kernal = np.ones((6,6),np.uint8)
+                crop_gray = cv2.dilate(crop_gray,kernal,iterations=1)
+                crop_gray = cv2.erode(crop_gray,kernal,iterations=1)
+                # kernal2 = np.ones((2,2),np.uint8)
+                # crop_gray = cv2.erode(crop_gray,kernal2,iterations=1)
+                # crop_gray = cv2.dilate(crop_gray,kernal2,iterations=1)
+
+
+
 
             # Save erode and dilate image
-            if output_path:
-                cv2.imwrite(os.path.join(output_path, f'{index}_{class_type}_erode_dilate.jpg'), crop_gray)
-
+                if output_path:
+                    cv2.imwrite(os.path.join(output_path, f'{index}_{class_type}_erode_dilate.jpg'), crop_gray)
+            shortest_d_to_p = SHORTEST_DISTNACE_TO_POINT_LARGE_CROP if w_bar>=250 and h_bar >= 150 else SHORTEST_DISTNACE_TO_POINT
             contours = cv2.findContours(crop_gray, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[0]
 
             # Save contour image
@@ -153,7 +160,7 @@ class CornerPointDetector:
                        point_mask[actual_y, actual_x] > 0:
                         continue
                     corner_points.append((corner[0][0] + x1, corner[0][1] + y1))
-                    point_mask[actual_y - SHORTEST_DISTNACE_TO_POINT:actual_y + SHORTEST_DISTNACE_TO_POINT, actual_x - SHORTEST_DISTNACE_TO_POINT:actual_x + SHORTEST_DISTNACE_TO_POINT] = 255
+                    point_mask[actual_y - shortest_d_to_p:actual_y + shortest_d_to_p, actual_x - shortest_d_to_p:actual_x + shortest_d_to_p] = 255
                     if output_path:
                         cv2.circle(output_img, (corner[0][0] + x1, corner[0][1] + y1), 2, POINT_COLOR[class_id], -1)
 
