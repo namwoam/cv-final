@@ -14,7 +14,7 @@ CLASS_ID_TO_TYPE = ['ZEBRACROSS', 'STOPLINE', 'ARROW', 'JUNCTIONBOX', 'OTHER']
 POINT_COLOR = [(0, 0, 255), (0, 255, 0), (255, 0, 0), (255, 255, 0), (0, 255, 255)]
 SHORTEST_DISTANCE_TO_BORDER = 2
 SHORTEST_DISTNACE_TO_POINT = 4
-AREA_THRESHOLD = 10
+MIN_AREA_RATIO = 1/200
 EPSILON = 4
 
 class CornerPointDetector:
@@ -95,9 +95,31 @@ class CornerPointDetector:
             crop_img = img[y1:y2, x1:x2]
             crop_gray = cv2.cvtColor(crop_img, cv2.COLOR_BGR2GRAY)
 
+            ###################################################
+            #Modify grayscale
+            ####################################################
+            # B,G,R = crop_img[:,:,0],crop_img[:,:,1],crop_img[:,:,2]
+            # a = np.array([3,-1,-1]).astype(np.float32)
+            # a /= np.sum(a)
+            # crop_gray = a[0]*B +a[1]*G+a[2]*R
+            # crop_gray = crop_gray.astype(np.uint8)
+            #############################################
+
             mean = np.mean(crop_gray)
             std = np.std(crop_gray)
             crop_gray = cv2.threshold(crop_gray, mean + std * 2 / 3 , 255, cv2.THRESH_BINARY)[1]
+
+            # Erode and Dilate
+            h_bar,w_bar = crop_gray.shape
+            white = np.sum(crop_gray) //255
+            total = h_bar*w_bar
+            if class_id == 0 and white < total/2.5 and total > 250*130:
+                kernal = np.ones((6,6),np.uint8)
+                crop_gray = cv2.dilate(crop_gray,kernal,iterations=1)
+                crop_gray = cv2.erode(crop_gray,kernal,iterations=1)
+                kernal2 = np.ones((2,2),np.uint8)
+                crop_gray = cv2.erode(crop_gray,kernal2,iterations=1)
+                crop_gray = cv2.dilate(crop_gray,kernal2,iterations=1)
 
             # Save threshold image
             if output_path:
@@ -113,7 +135,7 @@ class CornerPointDetector:
                 approx_img = np.zeros((crop_gray.shape[0], crop_gray.shape[1], 3), np.uint8)
 
             for contour in contours:
-                if cv2.contourArea(contour) < AREA_THRESHOLD:
+                if cv2.contourArea(contour) < MIN_AREA_RATIO * crop_gray.shape[0] * crop_gray.shape[1]:
                     continue
 
                 approx = cv2.approxPolyDP(contour, EPSILON, True)
@@ -139,7 +161,7 @@ class CornerPointDetector:
         if output_path:
             # Save image with corner points
             cv2.imwrite(os.path.join(output_path, 'output.jpg'), output_img)
-            # Save image with boxes
+            # Save box image
             cv2.imwrite(os.path.join(output_path, 'box.jpg'), box_img)
 
         return corner_points
