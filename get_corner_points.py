@@ -109,6 +109,10 @@ class CornerPointDetector:
             std = np.std(crop_gray)
             crop_gray = cv2.threshold(crop_gray, mean + std * 2 / 3 , 255, cv2.THRESH_BINARY)[1]
 
+            # Save threshold image
+            if output_path:
+                cv2.imwrite(os.path.join(output_path, f'{index}_{class_type}_threshold.jpg'), crop_gray)
+
             # Erode and Dilate
             h_bar,w_bar = crop_gray.shape
             white = np.sum(crop_gray) //255
@@ -121,9 +125,9 @@ class CornerPointDetector:
                 crop_gray = cv2.erode(crop_gray,kernal2,iterations=1)
                 crop_gray = cv2.dilate(crop_gray,kernal2,iterations=1)
 
-            # Save threshold image
+            # Save erode and dilate image
             if output_path:
-                cv2.imwrite(os.path.join(output_path, f'threshold_{index}_{class_type}.jpg'), crop_gray)
+                cv2.imwrite(os.path.join(output_path, f'{index}_{class_type}_erode_dilate.jpg'), crop_gray)
 
             contours = cv2.findContours(crop_gray, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[0]
 
@@ -131,7 +135,7 @@ class CornerPointDetector:
             if output_path:
                 contour_img = np.zeros((crop_gray.shape[0], crop_gray.shape[1], 3), np.uint8)
                 cv2.drawContours(contour_img, contours, -1, (255, 255, 255), 1)
-                cv2.imwrite(os.path.join(output_path, f'contours_{index}_{class_type}.jpg'), contour_img)
+                cv2.imwrite(os.path.join(output_path, f'{index}_{class_type}_contours.jpg'), contour_img)
                 approx_img = np.zeros((crop_gray.shape[0], crop_gray.shape[1], 3), np.uint8)
 
             for contour in contours:
@@ -155,7 +159,7 @@ class CornerPointDetector:
 
             # Save approx image
             if output_path:
-                cv2.imwrite(os.path.join(output_path, f'approx_{index}_{class_type}.jpg'), approx_img)
+                cv2.imwrite(os.path.join(output_path, f'{index}_{class_type}_approx.jpg'), approx_img)
 
 
         if output_path:
