@@ -8,10 +8,20 @@ import re
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
-from scipy.spatial.transform import Rotation as R
+from scipy.spatial.transform import Rotation as RR
+
+from filterpy.kalman import KalmanFilter
 
 
-def construct_physical_property(data_path, imu_timestamps, speed_timestamps, localizatoin_timestamps, all_timestamps, debug=False):
+def linear_interpolation(ts, ts_a, ts_b, ya, yb):
+    pt = pd.Timestamp(2023, 1, 1)
+    x = (ts - pt).to_numpy()/np.timedelta64(1, 'ns')
+    xa = (ts_a - pt).to_numpy()/np.timedelta64(1, 'ns')
+    xb = (ts_b - pt).to_numpy()/np.timedelta64(1, 'ns')
+    return np.interp(x, [xa, xb], [ya, yb])
+
+
+def construct_physical_property(data_path, imu_timestamps, speed_timestamps, localizatoin_timestamps, all_timestamps, kalman_filter_step_size,  debug=False):
     speed_df = pd.DataFrame(
         columns=["time", "speed"])
     imu_df = pd.DataFrame(
@@ -19,8 +29,8 @@ def construct_physical_property(data_path, imu_timestamps, speed_timestamps, loc
     for timestamp in speed_timestamps:
         df = pd.read_csv(os.path.join(
             data_path, "other_data", f"{timestamp}_raw_speed.csv"), header=None)
-        time = datetime.datetime.fromtimestamp(
-            float(timestamp.replace("_", ".")))
+        time = pd.Timestamp(
+            float(timestamp.replace("_", ".")), unit="s")
         speed_df.loc[len(speed_df)] = [time, df[0][0]]
     speed_df = speed_df.sort_values(by=['time'], ignore_index=True)
     if debug:
@@ -28,9 +38,9 @@ def construct_physical_property(data_path, imu_timestamps, speed_timestamps, loc
     for timestamp in imu_timestamps:
         df = pd.read_csv(os.path.join(
             data_path, "other_data", f"{timestamp}_raw_imu.csv"), header=None)
-        time = datetime.datetime.fromtimestamp(
-            float(timestamp.replace("_", ".")))
-        r = R.from_quat([df[0][0], df[1][0], df[2][0], df[3][0]])
+        time = pd.Timestamp(
+            float(timestamp.replace("_", ".")), unit="s")
+        r = RR.from_quat([df[0][0], df[1][0], df[2][0], df[3][0]])
         r = r.as_euler("xyz")
         imu_df.loc[len(imu_df)] = [time, df[0][0], df[1][0], df[2][0], df[3][0],
                                    df[0][1], df[1][1], df[2][1], df[0][2], df[1][2], df[2][2], r[0], r[1], r[2]]
@@ -52,54 +62,136 @@ def construct_physical_property(data_path, imu_timestamps, speed_timestamps, loc
         plt.legend()
         plt.savefig(os.path.join(
             data_path, f"physics-analysis-imu.png"))
-    groundtruth_df = pd.DataFrame(columns=["time", "pos_x", "pos_y"])
+    pos_df = pd.DataFrame(columns=["time", "pos_x", "pos_y"])
     for timestamp in localizatoin_timestamps:
         try:
             df = pd.read_csv(os.path.join(data_path, "dataset",
                                           timestamp, "gound_turth_pose.csv"), header=None)
             time = pd.Timestamp(
                 float(timestamp.replace("_", ".")), unit="s")
-            groundtruth_df.loc[len(groundtruth_df)] = [
+            pos_df.loc[len(pos_df)] = [
                 time, df[0][0], df[1][0]]
         except FileNotFoundError:
             pass
-    groundtruth_df = groundtruth_df.sort_values(by=['time'], ignore_index=True)
+    pos_df = pos_df.sort_values(by=['time'], ignore_index=True)
 
     if debug:
-        print(groundtruth_df)
+        print(pos_df)
     if debug:
         f = plt.figure()
-        ax = groundtruth_df.plot.scatter(
+        ax = pos_df.plot.scatter(
             x="pos_x", y="pos_y", c="time", colormap='viridis')
         plt.savefig(os.path.join(
             data_path, f"physics-analysis-ground_truth.png"))
 
     result_df = pd.DataFrame(columns=["time", "pos_x", "pos_y"])
-
     for timestamp in all_timestamps:
-        time = datetime.datetime.fromtimestamp(
-            float(timestamp.replace("_", ".")))
+        time = pd.Timestamp(
+            float(timestamp.replace("_", ".")), unit="s")
         result_df.loc[len(result_df)] = [time, 0, 0]
 
     result_df = result_df.sort_values(by=['time'], ignore_index=True)
     if debug:
         print(result_df)
-    delta_t = result_df.loc[len(result_df)-1][0].to_numpy() - \
-        result_df.loc[0][0].to_numpy()
-    delta_t = delta_t / np.timedelta64(1, 'ns')
-    kalman_filter_step_size = 8000
-    t = np.linspace(0, delta_t, kalman_filter_step_size)
-    dt = t[1]-t[0]
-    vx = np.zeros(kalman_filter_step_size)
-    vy = np.zeros(kalman_filter_step_size)
-    x = np.zeros(kalman_filter_step_size)
-    y = np.zeros(kalman_filter_step_size)
-    ax = np.zeros(kalman_filter_step_size)
-    ay = np.zeros(kalman_filter_step_size)
-    speed_ptr = 0
-    imu_ptr = 0
-    for kalman_index in range(kalman_filter_step_size):
-        pass
+    start_time = result_df.loc[0][0]
+    end_time = result_df.loc[len(result_df)-1][0]
+    kalman_data_df = pd.DataFrame(
+        columns=["time", "x", "y", "vx", "vy", "ax", "ay"])
+    t = pd.date_range(start=start_time,
+                      end=end_time,
+                      periods=kalman_filter_step_size)
+    kalman_data_df["time"] = t
+    pos_index = 0
+    speed_index = 0
+    imu_index = 0
+    for index in range(kalman_filter_step_size):
+        current_time = t[index]
+        while pos_df["time"][pos_index] < current_time and pos_index < len(pos_df)-1:
+            pos_index += 1
+        while speed_df["time"][speed_index] < current_time and speed_index < len(speed_df)-1:
+            speed_index += 1
+        while imu_df["time"][imu_index] < current_time and imu_index < len(imu_df)-1:
+            imu_index += 1
+        if pos_index == 0:
+            x = pos_df["pos_x"][pos_index]
+            y = pos_df["pos_y"][pos_index]
+        else:
+            x = linear_interpolation(current_time, pos_df["time"][pos_index-1], pos_df["time"][pos_index],
+                                     pos_df["pos_x"][pos_index-1], pos_df["pos_x"][pos_index])
+            y = linear_interpolation(current_time, pos_df["time"][pos_index-1], pos_df["time"][pos_index],
+                                     pos_df["pos_y"][pos_index-1], pos_df["pos_y"][pos_index])
+        if imu_index == 0:
+            ax = imu_df["a_x"][imu_index]
+            ay = imu_df["a_y"][imu_index]
+        else:
+            ax = linear_interpolation(current_time, imu_df["time"][imu_index-1], imu_df["time"][imu_index],
+                                      imu_df["a_x"][imu_index-1], imu_df["a_x"][imu_index])
+            ay = linear_interpolation(current_time, imu_df["time"][imu_index-1], imu_df["time"][imu_index],
+                                      imu_df["a_y"][imu_index-1], imu_df["a_y"][imu_index])
+        if speed_index == 0 or imu_index == 0:
+            vx = np.cos(
+                imu_df["r_z"][imu_index])*speed_df["speed"][speed_index]
+            vy = np.sin(
+                imu_df["r_z"][imu_index])*speed_df["speed"][speed_index]
+        else:
+            r = linear_interpolation(current_time, imu_df["time"][imu_index-1], imu_df["time"][imu_index],
+                                     imu_df["r_z"][imu_index-1], imu_df["r_z"][imu_index])
+            s = linear_interpolation(current_time, speed_df["time"][speed_index-1], speed_df["time"][speed_index],
+                                     speed_df["speed"][speed_index-1], speed_df["speed"][speed_index])
+            vx = np.cos(r)*s
+            vy = np.sin(r)*s
+        kalman_data_df.loc[index] = [
+            kalman_data_df["time"][index], x, y, vx, vy, ax, ay]
+    if debug:
+        print(kalman_data_df)
+        f = plt.figure()
+        ax = kalman_data_df.plot.scatter(
+            x="x", y="y", c="time", colormap='viridis')
+        plt.savefig(os.path.join(
+            data_path, f"physics-analysis-kalman_filter_measure.png"))
+    kalman_result_df = pd.DataFrame(
+        columns=["time", "x", "y", "vx", "vy", "ax", "ay"])
+    kalman_result_df["time"] = t
+    x = np.matrix(kalman_data_df.loc[0][1:]).T
+    P = np.diag([1.0, 1.0, 2.0, 2.0, 2.0, 2.0])
+    dt = (t[1]-t[0]).total_seconds()
+    A = np.matrix([[1, 0, dt, 0, 0.5*(dt**2), 0],
+                   [0, 1, 0, dt, 0, 0.5*(dt**2)],
+                   [0, 0, 1,  0, dt, 0],
+                   [0, 0, 1,  0, 0, dt],
+                   [0, 0, 0, 0, 1, 0],
+                   [0, 0, 0, 0, 0, 1]
+                   ])
+    H = np.diag([1, 1, 1, 1, 1, 1])
+    R = np.diag([1, 1, 1, 1, 1, 1])
+    sj = 0.1
+    Q = np.matrix([[(dt**6)/36, 0, (dt**5)/12, 0, (dt**4)/6, 0],
+                   [0, (dt**6)/36, 0, (dt**5)/12, 0, (dt**4)/6],
+                   [(dt**5)/12, 0, (dt**4)/4, 0, (dt**3)/2, 0],
+                   [0, (dt**5)/12, 0, (dt**4)/4, 0, (dt**3)/2],
+                   [(dt**4)/6, 0, (dt**3)/2, 0, (dt**2), 0],
+                   [0, (dt**4)/6, 0, (dt**3)/2, 0, (dt**2)]]) * sj**2
+    I = np.eye(6)
+    for filter_step in range(kalman_filter_step_size):
+        x = A*x
+        P = A*P*A.T + Q
+        S = H*P*H.T + R
+        K = (P*H.T) * np.linalg.pinv(S)
+        Z = np.array(kalman_data_df.loc[filter_step][1:]).reshape(
+            H.shape[0], 1)
+        y = Z - (H*x)
+        x = x + (K*y)
+        P = (I - (K*H))*P
+        kalman_result_df.loc[filter_step] = [
+            kalman_result_df["time"][filter_step], x[0, 0], x[1, 0], x[2, 0], x[3, 0], x[4, 0], x[5, 0]]
+    if debug:
+        print(kalman_result_df)
+        f = plt.figure()
+        ax = kalman_result_df.plot.scatter(
+            x="x", y="y", c="time", colormap='viridis')
+        plt.savefig(os.path.join(
+            data_path, f"physics-analysis-kalman_predict.png"))
+    return kalman_result_df
 
 
 if __name__ == '__main__':
@@ -126,4 +218,4 @@ if __name__ == '__main__':
         for line in reader.readlines():
             all_timestamps.append(line.replace("\n", ""))
     construct_physical_property(
-        args.data_path, imu_timestamps, speed_timestamps,  localization_timestamps, all_timestamps, True)
+        args.data_path, imu_timestamps, speed_timestamps,  localization_timestamps, all_timestamps, 10000,  True)
