@@ -152,6 +152,7 @@ def construct_physical_property(data_path, imu_timestamps, speed_timestamps, loc
     kalman_result_df = pd.DataFrame(
         columns=["time", "x", "y", "vx", "vy", "ax", "ay"])
     kalman_result_df["time"] = t
+    # source: https://github.com/balzer82/Kalman/blob/master/Kalman-Filter-CA-2.ipynb?create=1
     x = np.matrix(kalman_data_df.loc[0][1:]).T
     P = np.diag([1.0, 1.0, 2.0, 2.0, 2.0, 2.0])
     dt = (t[1]-t[0]).total_seconds()
