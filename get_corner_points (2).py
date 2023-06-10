@@ -93,16 +93,16 @@ class CornerPointDetector:
                 cv2.putText(box_img, f'{index}_{class_type}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, POINT_COLOR[class_id], 2)
 
             crop_img = img[y1:y2, x1:x2]
-            # crop_gray = cv2.cvtColor(crop_img, cv2.COLOR_BGR2GRAY)
+            crop_gray = cv2.cvtColor(crop_img, cv2.COLOR_BGR2GRAY)
 
             ###################################################
             #Modify grayscale
             ####################################################
-            B,G,R = crop_img[:,:,0],crop_img[:,:,1],crop_img[:,:,2]
-            a = np.array([3,-1,-1]).astype(np.float32)
-            a /= np.sum(a)
-            crop_gray = a[0]*B +a[1]*G+a[2]*R
-            crop_gray = crop_gray.astype(np.uint8)
+            # B,G,R = crop_img[:,:,0],crop_img[:,:,1],crop_img[:,:,2]
+            # a = np.array([3,-1,-1]).astype(np.float32)
+            # a /= np.sum(a)
+            # crop_gray = a[0]*B +a[1]*G+a[2]*R
+            # crop_gray = crop_gray.astype(np.uint8)
             #############################################
 
             mean = np.mean(crop_gray)
@@ -115,7 +115,7 @@ class CornerPointDetector:
 
             white = np.sum(crop_gray) //255
             total = h_bar*w_bar
-            if class_id == 0 and white < total/2.5:
+            if class_id == 0 and white < total/2.5 and total > 250*130:
                 kernal = np.ones((6,6),np.uint8)
                 crop_gray = cv2.dilate(crop_gray,kernal,iterations=1)
                 crop_gray = cv2.erode(crop_gray,kernal,iterations=1)
