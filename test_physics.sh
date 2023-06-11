@@ -1,1 +1,1 @@
-python ./get_physical_property.py --data_path ./public/seq1
+python ./get_physical_property.py --data_path ./public/seq2

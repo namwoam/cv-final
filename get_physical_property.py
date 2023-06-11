@@ -215,6 +215,15 @@ def construct_physical_property(data_path, imu_timestamps, speed_timestamps, loc
                 prev = row
         plt.savefig(os.path.join(
             data_path, f"physics-analysis-kalman_predict.png"))
+    if debug:
+        f = plt.figure
+        ax_kalman = kalman_result_df.plot.scatter(
+            x="x", y="y", c="blue", alpha=0.5,
+        )
+        ax_real = pos_df.plot.scatter(
+            x="pos_x", y="pos_y", c="red", s=1, alpha=0.1)
+        plt.savefig(os.path.join(
+            data_path, f"physics-analysis-validate.png"))
     return kalman_result_df
 
 
