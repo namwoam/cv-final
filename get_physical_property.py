@@ -146,7 +146,18 @@ def construct_physical_property(data_path, imu_timestamps, speed_timestamps, loc
         print(kalman_data_df)
         f = plt.figure()
         ax = kalman_data_df.plot.scatter(
-            x="x", y="y", c="time", colormap='viridis')
+            x="x", y="y", c="time", colormap='cool')
+        prev = None
+        if kalman_filter_step_size < 200:
+            for row in kalman_data_df[::-1].itertuples():
+                if prev:
+                    ax.annotate('',
+                                xy=(prev.x, prev.y),
+                                xytext=(row.x, row.y),
+                                arrowprops=dict(arrowstyle="->"),
+                                color='k',
+                                )
+                prev = row
         plt.savefig(os.path.join(
             data_path, f"physics-analysis-kalman_filter_measure.png"))
     kalman_result_df = pd.DataFrame(
@@ -154,17 +165,17 @@ def construct_physical_property(data_path, imu_timestamps, speed_timestamps, loc
     kalman_result_df["time"] = t
     # source: https://github.com/balzer82/Kalman/blob/master/Kalman-Filter-CA-2.ipynb?create=1
     x = np.matrix(kalman_data_df.loc[0][1:]).T
-    P = np.diag([1.0, 1.0, 2.0, 2.0, 2.0, 2.0])
+    P = np.diag([1.0, 1.0, 3.0, 3.0, 3.0, 3.0])
     dt = (t[1]-t[0]).total_seconds()
     A = np.matrix([[1, 0, dt, 0, 0.5*(dt**2), 0],
                    [0, 1, 0, dt, 0, 0.5*(dt**2)],
                    [0, 0, 1,  0, dt, 0],
-                   [0, 0, 1,  0, 0, dt],
+                   [0, 0, 0,  1, 0, dt],
                    [0, 0, 0, 0, 1, 0],
                    [0, 0, 0, 0, 0, 1]
                    ])
     H = np.diag([1, 1, 1, 1, 1, 1])
-    R = np.diag([1, 1, 1, 1, 1, 1])
+    R = np.diag([0.05**2, 0.05**2, 0.3**2, 0.3**2, 0.3**2, 0.3**2])
     sj = 0.1
     Q = np.matrix([[(dt**6)/36, 0, (dt**5)/12, 0, (dt**4)/6, 0],
                    [0, (dt**6)/36, 0, (dt**5)/12, 0, (dt**4)/6],
@@ -189,7 +200,19 @@ def construct_physical_property(data_path, imu_timestamps, speed_timestamps, loc
         print(kalman_result_df)
         f = plt.figure()
         ax = kalman_result_df.plot.scatter(
-            x="x", y="y", c="time", colormap='viridis')
+            x="x", y="y", c="time", alpha=0.5,
+            colormap="cool")
+        prev = None
+        if kalman_filter_step_size < 200:
+            for row in kalman_result_df[::-1].itertuples():
+                if prev:
+                    ax.annotate('',
+                                xy=(prev.x, prev.y),
+                                xytext=(row.x, row.y),
+                                arrowprops=dict(arrowstyle="->"),
+                                color='k',
+                                )
+                prev = row
         plt.savefig(os.path.join(
             data_path, f"physics-analysis-kalman_predict.png"))
     return kalman_result_df
@@ -219,4 +242,4 @@ if __name__ == '__main__':
         for line in reader.readlines():
             all_timestamps.append(line.replace("\n", ""))
     construct_physical_property(
-        args.data_path, imu_timestamps, speed_timestamps,  localization_timestamps, all_timestamps, 10000,  True)
+        args.data_path, imu_timestamps, speed_timestamps,  localization_timestamps, all_timestamps, 100,  True)
