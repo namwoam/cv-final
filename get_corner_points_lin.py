@@ -18,7 +18,7 @@ MIN_AREA_RATIO = 1/500
 EPSILON = 4.825
 
 class CornerPointDetector:
-    def __init__(self, data_path, camera_info_path, output_path = None, confidence = 0.2):
+    def __init__(self, data_path, camera_info_path, output_path = None):
         # ==================================================================================================
         # data_path (string): path to the folder containing the sequence. ex. public/seq1
         # camera_info_path (string): path to the camera info directory. ex. public/camera_info/lucid_cameras_x00
@@ -27,7 +27,6 @@ class CornerPointDetector:
         # ==================================================================================================
 
         self.data_path = data_path
-        self.confidence = confidence
         self.output_path = output_path
 
         self.camera_mask = {}
@@ -62,7 +61,8 @@ class CornerPointDetector:
         h, w, _ = img.shape
 
         pred = pd.read_csv(pred_path, names = ['x1', 'y1', 'x2', 'y2', 'class', 'confidence'])
-        pred = pred[pred['confidence'] >= self.confidence]
+        confidence_threshold = pred['confidence'].mean() / 2
+        pred = pred[pred['confidence'] >= confidence_threshold]
 
         pred[['x1', 'x2']] = np.clip(pred[['x1', 'x2']].astype(int), 0, w - 1)
         pred[['y1', 'y2']] = np.clip(pred[['y1', 'y2']].astype(int), 0, h - 1)
@@ -188,7 +188,3 @@ if __name__ == '__main__':
 
     for timestamp in tqdm(timestamps):
         detector.get_corner_points(timestamp)
-
-
-
-
