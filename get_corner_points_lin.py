@@ -107,8 +107,9 @@ class CornerPointDetector:
 
             mean = np.mean(crop_gray)
             std = np.std(crop_gray)
-            ostu_threshold = cv2.threshold(crop_gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[0]
-            crop_gray = cv2.threshold(crop_gray, 0.9 * (mean + 2 / 3 * std) + 0.1 * ostu_threshold, 255, cv2.THRESH_BINARY)[1]
+            crop_gray_ostu = cv2.threshold(crop_gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+            crop_gray = cv2.threshold(crop_gray, mean + 2 / 3 * std , 255, cv2.THRESH_BINARY)[1]
+            crop_gray = cv2.bitwise_and(crop_gray, crop_gray_ostu)
 
             # Save threshold image
             if output_path:
