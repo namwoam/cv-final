@@ -12,7 +12,7 @@ JUNCTIONBOX = 3
 OTHER = 4
 CLASS_ID_TO_TYPE = ['ZEBRACROSS', 'STOPLINE', 'ARROW', 'JUNCTIONBOX', 'OTHER']
 POINT_COLOR = [(0, 0, 255), (0, 255, 0), (255, 0, 0), (255, 255, 0), (0, 255, 255)]
-SHORTEST_DISTANCE_TO_BORDER = 3
+SHORTEST_DISTANCE_TO_BORDER = 2
 SHORTEST_DISTANCE_BETWEEN_POINTS = 5
 MIN_AREA_RATIO = 1/500
 EPSILON = 4.825
@@ -107,7 +107,8 @@ class CornerPointDetector:
 
             mean = np.mean(crop_gray)
             std = np.std(crop_gray)
-            crop_gray = cv2.threshold(crop_gray, mean + std * 2 / 3 , 255, cv2.THRESH_BINARY)[1]
+            ostu_threshold = cv2.threshold(crop_gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[0]
+            crop_gray = cv2.threshold(crop_gray, 0.9 * (mean + 2 / 3 * std) + 0.1 * ostu_threshold, 255, cv2.THRESH_BINARY)[1]
 
             # Save threshold image
             if output_path:
@@ -123,6 +124,7 @@ class CornerPointDetector:
                 crop_gray = cv2.dilate(crop_gray,kernal,iterations=1)
                 crop_gray = cv2.erode(crop_gray,kernal,iterations=1)
                 kernal2 = np.ones((2,2),np.uint8)
+  File "/home/blake/Homeworks/CV/cv-final/get_corner_points.py", line 192, in <mo
                 crop_gray = cv2.erode(crop_gray,kernal2,iterations=1)
                 crop_gray = cv2.dilate(crop_gray,kernal2,iterations=1)
 
@@ -130,6 +132,7 @@ class CornerPointDetector:
             if output_path:
                 cv2.imwrite(os.path.join(output_path, f'{index}_{class_type}_erode_dilate.jpg'), crop_gray)
             '''
+
 
             contours = cv2.findContours(crop_gray, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[0]
 
@@ -144,7 +147,8 @@ class CornerPointDetector:
                 if cv2.contourArea(contour) < MIN_AREA_RATIO * crop_gray.shape[0] * crop_gray.shape[1]:
                     continue
 
-                approx = cv2.approxPolyDP(contour, EPSILON, True)
+                epsilon = 0.004 * cv2.arcLength(contour, True) + (3.25 if class_id == ARROW else 4.5)
+                approx = cv2.approxPolyDP(contour, epsilon, True)
                 if output_path:
                     cv2.drawContours(approx_img, [approx], -1, (255, 255, 255), 1)
 
@@ -188,3 +192,7 @@ if __name__ == '__main__':
 
     for timestamp in tqdm(timestamps):
         detector.get_corner_points(timestamp)
+
+
+
+
