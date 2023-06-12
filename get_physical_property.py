@@ -68,7 +68,6 @@ def construct_physical_property(data_path, imu_timestamps, speed_timestamps, loc
         plt.savefig(os.path.join(
             data_path, f"physics-analysis-imu.png"))
     pos_df = pd.DataFrame(columns=["time", "pos_x", "pos_y"])
-    """
     for timestamp in localizatoin_timestamps:
         try:
             df = pd.read_csv(os.path.join(data_path, "dataset",
@@ -79,7 +78,7 @@ def construct_physical_property(data_path, imu_timestamps, speed_timestamps, loc
                 time, df[0][0], df[1][0]]
         except FileNotFoundError:
             pass
-    """
+    pos_df = pos_df.sort_values(by=['time'], ignore_index=True)
     result_df = pd.DataFrame(columns=["time", "pos_x", "pos_y"])
     for timestamp in all_timestamps:
         time = pd.Timestamp(
@@ -89,11 +88,13 @@ def construct_physical_property(data_path, imu_timestamps, speed_timestamps, loc
     result_df = result_df.sort_values(by=['time'], ignore_index=True)
     if debug:
         print(result_df)
+        """
     pred_pos_df = pd.read_csv(os.path.join(data_path , "pred_pose.txt"),names=["x" , "y"] , sep="\t")
     pos_df["pos_x"] = pred_pos_df["x"]
     pos_df["pos_y"] = pred_pos_df["y"]
     pos_df["time"] = result_df["time"]
     pos_df = pos_df.sort_values(by=['time'], ignore_index=True)
+    """
     if debug:
         print(pos_df)
     if debug:
@@ -186,7 +187,7 @@ def construct_physical_property(data_path, imu_timestamps, speed_timestamps, loc
                    [0, 0, 0, 0, 0, 1]
                    ])
     H = np.diag([1, 1, 1, 1, 1, 1])
-    R = np.diag([0.1**2, 0.1**2, 0.5**2, 0.5**2, 0.05**2, 0.05**2])
+    R = np.diag([0.1**2, 0.1**2, 0.3**2, 0.3**2, 0.05**2, 0.05**2])
     sj = 0.1
     Q = np.matrix([[(dt**6)/36, 0, (dt**5)/12, 0, (dt**4)/6, 0],
                    [0, (dt**6)/36, 0, (dt**5)/12, 0, (dt**4)/6],
@@ -272,4 +273,4 @@ if __name__ == '__main__':
         args.data_path, imu_timestamps, speed_timestamps,  localization_timestamps, all_timestamps, 3000,  True)
     result_df = result_df[["pos_x" ,"pos_y"]]
     result_df.to_csv(os.path.join(
-            args.data_path , "pred2.txt" ),index=False, header=False, sep='\t')
+            args.data_path , "pred_pose_pure_kalman.txt" ),index=False, header=False, sep='\t')

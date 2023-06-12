@@ -1,1 +1,1 @@
-python ./get_physical_property.py --data_path ./private/test1
+python ./get_physical_property.py --data_path ./public/seq1
