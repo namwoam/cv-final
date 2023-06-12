@@ -45,6 +45,11 @@ def construct_physical_property(data_path, imu_timestamps, speed_timestamps, loc
         imu_df.loc[len(imu_df)] = [time, df[0][0], df[1][0], df[2][0], df[3][0],
                                    df[0][1], df[1][1], df[2][1], df[0][2], df[1][2], df[2][2], r[0], r[1], r[2]]
     imu_df = imu_df.sort_values(by=['time'], ignore_index=True)
+    for colname in ["o_x", "o_y", "o_z", "o_w", "w_x", "w_y", "w_z", "a_x", "a_y", "a_z", "r_x", "r_y", "r_z"]:
+        imu_df[colname] = imu_df[colname].ewm(span = 10).mean()
+    imu_df.to_csv(os.path.join(
+            data_path , "imu_data.csv"))
+    
     if debug:
         print(imu_df)
     if debug:
@@ -63,6 +68,7 @@ def construct_physical_property(data_path, imu_timestamps, speed_timestamps, loc
         plt.savefig(os.path.join(
             data_path, f"physics-analysis-imu.png"))
     pos_df = pd.DataFrame(columns=["time", "pos_x", "pos_y"])
+    """
     for timestamp in localizatoin_timestamps:
         try:
             df = pd.read_csv(os.path.join(data_path, "dataset",
@@ -73,17 +79,7 @@ def construct_physical_property(data_path, imu_timestamps, speed_timestamps, loc
                 time, df[0][0], df[1][0]]
         except FileNotFoundError:
             pass
-    pos_df = pos_df.sort_values(by=['time'], ignore_index=True)
-
-    if debug:
-        print(pos_df)
-    if debug:
-        f = plt.figure()
-        ax = pos_df.plot.scatter(
-            x="pos_x", y="pos_y", c="time", colormap='viridis')
-        plt.savefig(os.path.join(
-            data_path, f"physics-analysis-ground_truth.png"))
-
+    """
     result_df = pd.DataFrame(columns=["time", "pos_x", "pos_y"])
     for timestamp in all_timestamps:
         time = pd.Timestamp(
@@ -93,6 +89,21 @@ def construct_physical_property(data_path, imu_timestamps, speed_timestamps, loc
     result_df = result_df.sort_values(by=['time'], ignore_index=True)
     if debug:
         print(result_df)
+    pred_pos_df = pd.read_csv(os.path.join(data_path , "pred_pose.txt"),names=["x" , "y"] , sep="\t")
+    pos_df["pos_x"] = pred_pos_df["x"]
+    pos_df["pos_y"] = pred_pos_df["y"]
+    pos_df["time"] = result_df["time"]
+    pos_df = pos_df.sort_values(by=['time'], ignore_index=True)
+    if debug:
+        print(pos_df)
+    if debug:
+        f = plt.figure()
+        ax = pos_df.plot.scatter(
+            x="pos_x", y="pos_y", c="time", colormap='viridis')
+        plt.savefig(os.path.join(
+            data_path, f"physics-analysis-ground_truth.png"))
+
+    
     start_time = result_df.loc[0][0]
     end_time = result_df.loc[len(result_df)-1][0]
     kalman_data_df = pd.DataFrame(
@@ -175,7 +186,7 @@ def construct_physical_property(data_path, imu_timestamps, speed_timestamps, loc
                    [0, 0, 0, 0, 0, 1]
                    ])
     H = np.diag([1, 1, 1, 1, 1, 1])
-    R = np.diag([0.05**2, 0.05**2, 0.3**2, 0.3**2, 0.3**2, 0.3**2])
+    R = np.diag([0.1**2, 0.1**2, 0.5**2, 0.5**2, 0.05**2, 0.05**2])
     sj = 0.1
     Q = np.matrix([[(dt**6)/36, 0, (dt**5)/12, 0, (dt**4)/6, 0],
                    [0, (dt**6)/36, 0, (dt**5)/12, 0, (dt**4)/6],
@@ -215,16 +226,23 @@ def construct_physical_property(data_path, imu_timestamps, speed_timestamps, loc
                 prev = row
         plt.savefig(os.path.join(
             data_path, f"physics-analysis-kalman_predict.png"))
+    kalman_index = 0
+    for index in range(len(result_df)):
+        while kalman_result_df["time"][kalman_index] < result_df["time"][index] and kalman_index < len(kalman_result_df)-1:
+            kalman_index +=1
+
+        x = kalman_result_df["x"][kalman_index]
+        y = kalman_result_df["y"][kalman_index]
+        result_df.loc[index] = [
+            result_df["time"][index], x, y]
     if debug:
-        f = plt.figure
-        ax_kalman = kalman_result_df.plot.scatter(
-            x="x", y="y", c="blue", alpha=0.5,
-        )
-        ax_real = pos_df.plot.scatter(
-            x="pos_x", y="pos_y", c="red", s=1, alpha=0.1)
+        f = plt.figure()
+        ax = result_df.plot.scatter(
+            x="pos_x", y="pos_y", c="time", colormap='cool')
         plt.savefig(os.path.join(
-            data_path, f"physics-analysis-validate.png"))
-    return kalman_result_df
+            data_path, f"physics-analysis-kalman_result.png"))
+
+    return result_df
 
 
 if __name__ == '__main__':
@@ -250,5 +268,8 @@ if __name__ == '__main__':
     with open(os.path.join(args.data_path, "all_timestamp.txt")) as reader:
         for line in reader.readlines():
             all_timestamps.append(line.replace("\n", ""))
-    construct_physical_property(
-        args.data_path, imu_timestamps, speed_timestamps,  localization_timestamps, all_timestamps, 100,  True)
+    result_df = construct_physical_property(
+        args.data_path, imu_timestamps, speed_timestamps,  localization_timestamps, all_timestamps, 3000,  True)
+    result_df = result_df[["pos_x" ,"pos_y"]]
+    result_df.to_csv(os.path.join(
+            args.data_path , "pred2.txt" ),index=False, header=False, sep='\t')

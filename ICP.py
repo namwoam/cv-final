@@ -30,7 +30,7 @@ def numpy2pcd(arr):
 
 if __name__ == '__main__':
 
-    with open(os.path.join('./private/ITRI_DLC2/test2', 'localization_timestamp.txt'), 'r') as f:
+    with open(os.path.join( os.path.dirname(__file__) , 'private','test2', 'localization_timestamp.txt'), 'r') as f:
         timestamps = f.readlines()
 
     timestamps = [timestamp.strip() for timestamp in timestamps]
