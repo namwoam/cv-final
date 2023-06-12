@@ -1,1 +1,1 @@
-python ./get_physical_property.py --data_path ./private/test2
+python ./get_physical_property.py --data_path ./private/test1

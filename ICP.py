@@ -30,15 +30,15 @@ def numpy2pcd(arr):
 
 if __name__ == '__main__':
 
-    with open(os.path.join( os.path.dirname(__file__) , 'private','test2', 'localization_timestamp.txt'), 'r') as f:
+    with open(os.path.join( os.path.dirname(__file__) , 'private','test1', 'localization_timestamp.txt'), 'r') as f:
         timestamps = f.readlines()
 
     timestamps = [timestamp.strip() for timestamp in timestamps]
 
     Dxy= []
     for timestamp in tqdm(timestamps):
-        path_name = './private/test2/dataset/' + timestamp
-        ini_path_name = '.private/ITRI_DLC2/test2/new_init_pose'+ timestamp
+        path_name = './private/test1/dataset/' + timestamp
+        ini_path_name = '.private/test1/new_init_pose'+ timestamp
         # Target point cloud
         target = csv_reader(f'{path_name}/sub_map.csv')
         target_pcd = numpy2pcd(target)
@@ -61,4 +61,4 @@ if __name__ == '__main__':
         #print(pred_x, pred_y)
         my_df = pd.DataFrame(Dxy) 
         
-        my_df.to_csv('./private/solution/test2/pred_pose.txt', index=False, header=False, sep='\t')
+        my_df.to_csv('./private/solution/test1/pred_pose.txt', index=False, header=False, sep='\t')
