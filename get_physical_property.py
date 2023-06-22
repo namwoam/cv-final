@@ -21,7 +21,7 @@ def linear_interpolation(ts, ts_a, ts_b, ya, yb):
     return np.interp(x, [xa, xb], [ya, yb])
 
 
-def construct_physical_property(data_path, imu_timestamps, speed_timestamps, localizatoin_timestamps, all_timestamps, kalman_filter_step_size,  debug=False):
+def construct_physical_property(data_path, imu_timestamps, speed_timestamps, localization_timestamps, all_timestamps, kalman_filter_step_size,  debug=False):
     speed_df = pd.DataFrame(
         columns=["time", "speed"])
     imu_df = pd.DataFrame(
@@ -68,7 +68,7 @@ def construct_physical_property(data_path, imu_timestamps, speed_timestamps, loc
         plt.savefig(os.path.join(
             data_path, f"physics-analysis-imu.png"))
     pos_df = pd.DataFrame(columns=["time", "pos_x", "pos_y"])
-    for timestamp in localizatoin_timestamps:
+    for timestamp in localization_timestamps:
         try:
             df = pd.read_csv(os.path.join(data_path, "dataset",
                                           timestamp, "gound_turth_pose.csv"), header=None)
@@ -76,6 +76,7 @@ def construct_physical_property(data_path, imu_timestamps, speed_timestamps, loc
                 float(timestamp.replace("_", ".")), unit="s")
             pos_df.loc[len(pos_df)] = [
                 time, df[0][0], df[1][0]]
+            print("ground truth pose")
         except FileNotFoundError:
             pass
     pos_df = pos_df.sort_values(by=['time'], ignore_index=True)
@@ -270,7 +271,7 @@ if __name__ == '__main__':
         for line in reader.readlines():
             all_timestamps.append(line.replace("\n", ""))
     result_df = construct_physical_property(
-        args.data_path, imu_timestamps, speed_timestamps,  localization_timestamps, all_timestamps, 3000,  True)
+        args.data_path, imu_timestamps, speed_timestamps,  localization_timestamps, all_timestamps, 50,  True)
     result_df = result_df[["pos_x" ,"pos_y"]]
     result_df.to_csv(os.path.join(
             args.data_path , "pred_pose_pure_kalman.txt" ),index=False, header=False, sep='\t')
